@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Miku Microeconomics: Final Exam</title>
+    <style>
+        body {
+            margin: 0; display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; background-color: #222;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden; user-select: none;
+        }
+        #gameContainer {
+            position: relative; width: 800px; height: 400px;
+            border: 4px solid #fff; background: linear-gradient(to bottom, #2c3e50, #3498db);
+            cursor: pointer;
+        }
+        #ui-layer {
+            position: absolute; top: 15px; left: 20px; z-index: 10; pointer-events: none;
+        }
+        #questionBox {
+            position: absolute; top: 15px; right: 20px; z-index: 10;
+            background: rgba(255, 255, 255, 0.95); padding: 15px;
+            border-radius: 10px; border: 3px solid #f1c40f;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3); text-align: center;
+            width: 340px; /* Rộng hơn để chứa chữ dài */
+        }
+        .q-title { color: #e74c3c; font-size: 14px; font-weight: bold; margin-bottom: 8px; text-transform: uppercase;}
+        .q-text { color: #2c3e50; font-size: 15px; font-weight: 700; line-height: 1.4; }
+        
+        .text-stroke { color: white; font-size: 24px; font-weight: bold; text-shadow: 2px 2px 0 #000; }
+        
+        #gameOverScreen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); display: none; flex-direction: column;
+            justify-content: center; align-items: center; color: white; z-index: 20;
+            text-align: center; padding: 20px; box-sizing: border-box;
+        }
+        .blink { animation: blinker 1s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+    </style>
+</head>
+<body>
+
+    <div id="gameContainer">
+        <div id="ui-layer">
+            <div class="text-stroke" id="scoreText">Điểm: 0</div>
+            <div class="text-stroke" style="font-size: 14px; margin-top: 5px; color: #feca57;">Cửa trên: ĐÚNG | Cửa dưới: SAI</div>
+        </div>
+
+        <div id="questionBox">
+            <div class="q-title" id="chapterName">CHƯƠNG...</div>
+            <div class="q-text" id="mathQuestion">Đang tải câu hỏi...</div>
+        </div>
+
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        
+        <div id="gameOverScreen">
+            <h1 class="text-stroke" style="font-size: 45px; color: #ff6b6b; margin-bottom: 10px;">SAI KIẾN THỨC!</h1>
+            <h2 class="text-stroke" id="correctAnswerInfo" style="color: #1dd1a1; font-size: 18px; line-height: 1.5; margin: 10px 40px; white-space: pre-wrap;"></h2>
+            <p class="text-stroke blink" style="font-size: 18px; margin-top: 20px;">Bấm phím Space để làm lại cuộc đời</p>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('scoreText');
+        const goScreen = document.getElementById('gameOverScreen');
+        const questionEl = document.getElementById('mathQuestion');
+        const chapterEl = document.getElementById('chapterName');
+        const infoEl = document.getElementById('correctAnswerInfo');
+
+        const playerImg = new Image(); playerImg.src = 'miku.png';
+
+        let gameRunning = true;
+        let score = 0;
+        let gameSpeed = 1.8; 
+        let frame = 0;
+        let walls = [];
+        const GROUND_HEIGHT = 20;
+        const PLAY_AREA = canvas.height - GROUND_HEIGHT; 
+
+        // --- BỘ ĐỀ THI VI MÔ CỦA BẠN ---
+        const questionBank = [
+            // CHƯƠNG 2: CUNG CẦU & THUẾ
+            { chapter: "Chương 2 & Căn bản", text: "61. Nếu cung hoàn toàn không co giãn, giá sẽ tăng khi chính phủ đánh thuế lên người sản xuất.", answer: "SAI", explain: "Cung không co giãn (đường thẳng đứng) -> NSX chịu 100% thuế, giá người mua trả trên thị trường không đổi." },
+            { chapter: "Chương 2: Cung Cầu", text: "62. Dịch cúm gà làm cầu thịt bò dịch phải thành D2. Độ co giãn tại mọi mức sản lượng của D2 giảm so với D1.", answer: "ĐÚNG", explain: "Khi đường cầu dịch song song sang phải, tại cùng một mức sản lượng (hoặc mức giá), độ co giãn sẽ giảm." },
+            { chapter: "Chương 3: Co Giãn", text: "63. Cung trong dài hạn sẽ co giãn hơn cung trong ngắn hạn.", answer: "ĐÚNG", explain: "Vì dài hạn NSX có đủ thời gian thay đổi công nghệ, mở rộng quy mô và tìm nguồn thay thế." },
+            { chapter: "Chương 3: Co Giãn", text: "64. Hàng hóa định nghĩa rộng có độ co giãn lớn hơn hàng hóa định nghĩa hẹp.", answer: "SAI", explain: "Hàng hóa hẹp (VD: Đường Biên Hòa) có nhiều sản phẩm thay thế hơn nên co giãn LỚN HƠN." },
+            { chapter: "Chương 3: Co Giãn", text: "65. Hai đường cầu cùng đi qua điểm A, đường nào dốc hơn thì cầu ít co giãn theo giá hơn.", answer: "ĐÚNG", explain: "" },
+            { chapter: "Chương 3: Co Giãn", text: "66. Hệ số co giãn chéo của cầu hàng X theo giá hàng Y âm thì X và Y là hàng hóa thông thường.", answer: "SAI", explain: "Co giãn chéo ÂM nghĩa là X và Y là hàng hóa BỔ SUNG." },
+            { chapter: "Chương 2: Cung Cầu", text: "67. Gánh nặng thuế có xu hướng nghiêng về phía ít co giãn hơn của thị trường.", answer: "ĐÚNG", explain: "" },
+            { chapter: "Chương 3: Co Giãn", text: "68. Doanh thu đạt tối đa nếu cầu co giãn hoàn toàn theo giá.", answer: "SAI", explain: "Doanh thu max khi cầu co giãn ĐƠN VỊ (|Ed| = 1)." },
+            { chapter: "Chương 3: Co Giãn", text: "69. Muốn tăng doanh thu cho hàng hóa có nhiều sản phẩm thay thế thì cần tăng giá.", answer: "SAI", explain: "Có nhiều sp thay thế = Cầu co giãn nhiều. Muốn tăng TR phải GIẢM giá." },
+            { chapter: "Chương 3: Co Giãn", text: "71. Nếu giá tăng 5% làm tổng doanh thu tăng 10% thì cầu là tương đối co giãn.", answer: "SAI", explain: "P tăng làm TR tăng chứng tỏ cầu KÉM co giãn (|Ed| < 1)." },
+            { chapter: "Chương 3: Co Giãn", text: "72. Hệ số co giãn luôn thay đổi với bất kỳ dạng đường cầu nào.", answer: "SAI", explain: "Đường cầu iso-elastic (VD: P = A/Q) có hệ số co giãn không đổi." },
+            { chapter: "Chương 3: Co Giãn", text: "74. Co giãn của cầu theo thu nhập là số dương, kết luận đó là hàng hóa xa xỉ.", answer: "SAI", explain: "Dương chỉ khẳng định là Hàng Thông Thường. Phải > 1 mới là xa xỉ." },
+            { chapter: "Chương 3: Co Giãn", text: "78. Hàng hóa thiết yếu thường ít co giãn, hàng xa xỉ co giãn tương đối theo giá.", answer: "ĐÚNG", explain: "" },
+            { chapter: "Chương 3: Co Giãn", text: "79. Giá hàng A tăng làm dịch cầu B sang phải nếu co giãn chéo âm.", answer: "SAI", explain: "Co giãn chéo âm = Bổ sung. Giá A tăng -> Cầu A giảm -> Cầu B dịch TRÁI (giảm)." },
+            { chapter: "Chương 3: Co Giãn", text: "80. Mọi đường cung tuyến tính đi qua gốc tọa độ có hệ số co giãn là hằng số.", answer: "ĐÚNG", explain: "Luôn có Es = 1." },
+            { chapter: "Chương 2: Cung Cầu", text: "81. Tiến bộ công nghệ làm cung tăng giúp doanh thu của hãng tăng.", answer: "SAI", explain: "Nếu cầu kém co giãn, cung tăng làm giá giảm rất mạnh -> Doanh thu giảm." },
+            { chapter: "Chương 3: Co Giãn", text: "82. A và B thay thế thì hệ số co giãn chéo luôn dương.", answer: "ĐÚNG", explain: "" },
+            { chapter: "Chương 3: Co Giãn", text: "83. Nếu cung là co giãn đơn vị thì tổng doanh thu không đổi khi giá thay đổi.", answer: "SAI", explain: "Đó là tính chất của CẦU co giãn đơn vị, không phải cung." },
+            { chapter: "Chương 2: Cung Cầu", text: "89. Người tiêu dùng chịu phần lớn thuế khi cầu co giãn hơn cung.", answer: "SAI", explain: "Cầu co giãn hơn cung -> Người sản xuất chịu phần lớn thuế." },
+            { chapter: "Chương 3: Co Giãn", text: "90. Co giãn của cầu theo thu nhập = -2 nghĩa là hàng hóa thứ cấp.", answer: "ĐÚNG", explain: "Co giãn thu nhập ÂM là hàng thứ cấp." },
+
+            // CHƯƠNG LÝ THUYẾT HÀNH VI NGƯỜI TIÊU DÙNG
+            { chapter: "Chương: HV NTD", text: "91. Chính sách sàn giá làm tăng thặng dư tiêu dùng, trần giá làm giảm thặng dư tiêu dùng.", answer: "SAI", explain: "Sàn giá bảo vệ NSX -> giảm CS. Trần giá bảo vệ NTD -> tăng CS." },
+            { chapter: "Chương: HV NTD", text: "92. Chơi game thấy ít hấp dẫn dần nhưng vẫn chơi: Tổng ích lợi giảm với tốc độ tăng dần.", answer: "SAI", explain: "Tổng ích lợi (TU) VẪN TĂNG nhưng với tốc độ GIẢM DẦN (do MU giảm)." },
+            { chapter: "Chương: HV NTD", text: "93. Thu nhập tăng, kết hợp tối ưu cho phép mua nhiều hơn cả hai hàng hóa.", answer: "SAI", explain: "Chỉ đúng nếu cả 2 là hàng thông thường. Nếu có hàng thứ cấp, sẽ mua ít hàng thứ cấp đi." },
+            { chapter: "Chương: HV NTD", text: "95. Độ dốc đường thu nhập - tiêu dùng cho biết hàng trục hoành là thông thường hay thứ cấp.", answer: "ĐÚNG", explain: "Vòng về sau = thứ cấp; dốc lên = thông thường." },
+            { chapter: "Chương: HV NTD", text: "96. Thu nhập thay đổi làm tăng độ dốc của đường ngân sách.", answer: "SAI", explain: "Thu nhập thay đổi chỉ làm ĐƯỜNG NGÂN SÁCH DỊCH CHUYỂN SONG SONG." },
+            { chapter: "Chương: HV NTD", text: "97. Đường bàng quan của 2 hàng bổ sung hoàn hảo có MRS là hằng số.", answer: "SAI", explain: "Thay thế hoàn hảo mới là hằng số. Bổ sung hoàn hảo có dạng chữ L." },
+            { chapter: "Chương: HV NTD", text: "98. Đường bàng quan nằm xa gốc tọa độ minh họa mức thu nhập cao hơn.", answer: "SAI", explain: "Đường bàng quan minh họa MỨC ĐỘ THỎA MÃN (Ích lợi), không phải thu nhập." },
+            { chapter: "Chương: HV NTD", text: "99. Hàm ích lợi U = ax + bY có đường bàng quan cong lồi về gốc tọa độ.", answer: "SAI", explain: "Đây là hàm bậc 1 -> Đường bàng quan là ĐƯỜNG THẲNG (Hàng hóa thay thế hoàn hảo)." },
+            { chapter: "Chương: HV NTD", text: "100. Vì MU giảm dần nên thặng dư tiêu dùng luôn nhận giá trị âm.", answer: "SAI", explain: "Thặng dư tiêu dùng (CS) LUÔN DƯƠNG hoặc bằng 0." },
+            { chapter: "Chương: HV NTD", text: "101. Độ dốc của đường giá cả - tiêu dùng (PCC) cho biết quan hệ thay thế/bổ sung.", answer: "ĐÚNG", explain: "" },
+            { chapter: "Chương: HV NTD", text: "103. Khi giá 1 hàng hóa thay đổi, các yếu tố khác giữ nguyên, độ dốc ngân sách thay đổi.", answer: "ĐÚNG", explain: "Độ dốc = -Px/Py." },
+            { chapter: "Chương: HV NTD", text: "104. Khi MUx/Px > MUy/Py, người tiêu dùng nên tăng mua X, giảm mua Y.", answer: "ĐÚNG", explain: "1 đồng chi cho X đang mang lại nhiều ích lợi hơn chi cho Y." },
+            { chapter: "Chương: HV NTD", text: "105. Hàng Giffen phải là hàng thứ cấp và ngược lại thứ cấp phải là Giffen.", answer: "SAI", explain: "Hàng Giffen luôn là hàng thứ cấp, nhưng hàng thứ cấp CHƯA CHẮC đã là Giffen." },
+            { chapter: "Chương: HV NTD", text: "107. Đường thu nhập-tiêu dùng dùng để xây dựng đường Engel, đường giá cả-tiêu dùng để xây dựng đường cầu.", answer: "ĐÚNG", explain: "" },
+            { chapter: "Chương: HV NTD", text: "108. Hàm U = min{X,Y} có đường bàng quan dạng tuyến tính.", answer: "SAI", explain: "Dạng chữ L (Bổ sung hoàn hảo)." },
+            { chapter: "Chương: HV NTD", text: "111. Người TD hợp lý sẽ tăng tiêu dùng cho đến khi ích lợi cận biên (MU) bằng giá bán (P).", answer: "ĐÚNG", explain: "" },
+            { chapter: "Chương: HV NTD", text: "113. Điểm tối ưu là điểm mua được nhiều hàng hóa nhất và ích lợi cao nhất.", answer: "SAI", explain: "Là điểm có ích lợi cao nhất TRONG PHẠM VI NGÂN SÁCH, không phải 'nhiều nhất'." },
+            { chapter: "Chương: HV NTD", text: "116. Khi giá giảm, ảnh hưởng thu nhập luôn âm, ảnh hưởng thay thế có thể âm/dương.", answer: "SAI", explain: "Ảnh hưởng thay thế luôn ngược chiều giá. Ảnh hưởng thu nhập mới là cái tùy thuộc tính chất hàng hóa." },
+            { chapter: "Chương: HV NTD", text: "118. Các đường bàng quan luôn có độ dốc giảm dần khi tăng tiêu dùng hàng hóa ở trục hoành.", answer: "ĐÚNG", explain: "Quy luật Tỷ lệ thay thế cận biên (MRS) giảm dần." },
+            { chapter: "Chương: HV NTD", text: "120. Độ dốc đường ngân sách thể hiện sự đánh đổi giữa hai hàng hóa.", answer: "ĐÚNG", explain: "Tỷ lệ giá cả trên thị trường." }
+        ];
+
+        function getRandomQuestion() {
+            return questionBank[Math.floor(Math.random() * questionBank.length)];
+        }
+
+        const player = {
+            x: 50, y: 150, width: 50, height: 50, 
+            dy: 0, jumpPower: 5.5, gravity: 0.25,  
+            
+            draw: function() {
+                if (playerImg.complete) ctx.drawImage(playerImg, this.x, this.y, this.width, this.height);
+                else { ctx.fillStyle = "pink"; ctx.fillRect(this.x, this.y, this.width, this.height); }
+            },
+            update: function() {
+                this.dy += this.gravity; this.y += this.dy;
+                if (this.y + this.height > PLAY_AREA) { this.y = PLAY_AREA - this.height; this.dy = 0; }
+                if (this.y < 0) { this.y = 0; this.dy = 0; } 
+            },
+            jump: function() { this.dy = -this.jumpPower; }
+        };
+
+        class Wall {
+            constructor() {
+                this.x = canvas.width;
+                this.width = 120; // Tường rộng dễ nhìn
+                this.gateHeight = PLAY_AREA / 2; // CHỈ CÓ 2 TẦNG (Đúng trên, Sai dưới)
+                
+                this.qData = getRandomQuestion(); 
+                this.correctIndex = (this.qData.answer === "ĐÚNG") ? 0 : 1; 
+
+                this.passed = false;
+                this.markedForDeletion = false;
+            }
+            update() {
+                this.x -= gameSpeed;
+                if (this.x + this.width < 0) this.markedForDeletion = true;
+
+                if (!this.passed && this.x + this.width < player.x) {
+                    score++; scoreEl.innerText = "Điểm: " + score;
+                    this.passed = true;
+                    if(score % 5 === 0) gameSpeed += 0.1; // Chơi 5 câu mới tăng 1 tí
+                }
+            }
+            draw() {
+                const options = ["ĐÚNG", "SAI"];
+                const colors = ["rgba(46, 204, 113, 0.9)", "rgba(231, 76, 60, 0.9)"]; // Cửa trên Xanh, dưới Đỏ
+
+                for (let i = 0; i < 2; i++) {
+                    let gateY = i * this.gateHeight;
+
+                    ctx.fillStyle = colors[i];
+                    ctx.fillRect(this.x, gateY, this.width, this.gateHeight);
+                    
+                    ctx.strokeStyle = "#fff"; ctx.lineWidth = 3;
+                    ctx.strokeRect(this.x, gateY, this.width, this.gateHeight);
+
+                    ctx.fillStyle = "#fff"; ctx.font = "bold 26px Arial";
+                    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.fillText(options[i], this.x + this.width/2, gateY + this.gateHeight/2);
+                }
+            }
+        }
+
+        function checkCollision(p, wall) {
+            let paddingX = 10; 
+            
+            if (p.x + p.width - paddingX > wall.x && p.x + paddingX < wall.x + wall.width) {
+                
+                let correctTop = wall.correctIndex * wall.gateHeight;
+                let correctBottom = correctTop + wall.gateHeight;
+
+                // VẪN GIỮ NGUYÊN VÙNG AN TOÀN 25% ĐỂ DỄ THỞ
+                let margin = wall.gateHeight * 0.25; 
+                let safeTop = correctTop - margin;
+                let safeBottom = correctBottom + margin;
+
+                let playerCenterY = p.y + p.height / 2;
+                
+                // Nếu đi lạc sang cửa sai
+                if (playerCenterY < safeTop || playerCenterY > safeBottom) {
+                    let extraExplain = wall.qData.explain ? `\n\nGiải thích: ${wall.qData.explain}` : "";
+                    infoEl.innerText = `Câu hỏi:\n${wall.qData.text}\n\n-> Đáp án là: ${wall.qData.answer} ${extraExplain}`;
+                    return true; 
+                }
+            }
+            return false;
+        }
+
+        function handleWalls() {
+            // Khoảng cách xuất hiện 850px để đọc chữ cho thoải mái
+            if (walls.length === 0 || walls[walls.length - 1].x < canvas.width - 850) {
+                walls.push(new Wall());
+            }
+
+            let activeWall = walls.find(w => w.x + w.width > player.x);
+            if (activeWall) {
+                chapterEl.innerText = activeWall.qData.chapter;
+                questionEl.innerText = activeWall.qData.text;
+            }
+
+            for (let i = 0; i < walls.length; i++) {
+                walls[i].update(); walls[i].draw();
+                if (checkCollision(player, walls[i])) gameOver();
+            }
+            walls = walls.filter(w => !w.markedForDeletion);
+        }
+
+        function animate() {
+            if (!gameRunning) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = "#34495e"; ctx.fillRect(0, PLAY_AREA, canvas.width, GROUND_HEIGHT);
+            ctx.fillStyle = "#2c3e50"; ctx.fillRect(0, PLAY_AREA + 5, canvas.width, 15);
+
+            player.update(); player.draw(); handleWalls();
+            frame++; requestAnimationFrame(animate);
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            goScreen.style.display = 'flex';
+        }
+
+        function doAction(e) {
+            if(e.type === 'keydown' && (e.code === 'Space' || e.key === ' ')) e.preventDefault();
+            if (!gameRunning) location.reload();
+            else player.jump();
+        }
+
+        window.onkeydown = doAction; window.onmousedown = doAction;
+        document.getElementById('gameContainer').onclick = doAction;
+
+        animate();
+
+    </script>
+</body>
+</html>
