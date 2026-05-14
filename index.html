@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> <title>Miku Microeconomics: Final Exam</title>
+    <style>
+        body {
+            margin: 0; display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; background-color: #222;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden; user-select: none;
+            touch-action: none; /* CHẶN THAO TÁC CUỘN/ZOOM BẰNG TAY */
+        }
+        #gameContainer {
+            position: relative; width: 800px; height: 400px;
+            max-width: 100vw; /* Tự thu nhỏ cho vừa điện thoại */
+            border: 4px solid #fff; background: linear-gradient(to bottom, #2c3e50, #3498db);
+            cursor: pointer;
+        }
+        #ui-layer {
+            position: absolute; top: 10px; left: 10px; z-index: 10; pointer-events: none;
+        }
+        #questionBox {
+            position: absolute; top: 10px; right: 10px; z-index: 10;
+            background: rgba(255, 255, 255, 0.95); padding: 10px;
+            border-radius: 10px; border: 3px solid #f1c40f;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3); text-align: center;
+            width: 40%; max-width: 340px; /* Thích ứng trên màn hình nhỏ */
+        }
+        .q-title { color: #e74c3c; font-size: 12px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;}
+        .q-text { color: #2c3e50; font-size: 14px; font-weight: 700; line-height: 1.3; }
+        
+        .text-stroke { color: white; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 0 #000; }
+        
+        #gameOverScreen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); display: none; flex-direction: column;
+            justify-content: center; align-items: center; color: white; z-index: 20;
+            text-align: center; padding: 20px; box-sizing: border-box;
+        }
+        .blink { animation: blinker 1s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+        
+        canvas {
+            width: 100%; height: 100%; /* Giúp canvas tự co giãn */
+            touch-action: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="gameContainer">
+        <div id="ui-layer">
+            <div class="text-stroke" id="scoreText">Điểm: 0</div>
+            <div class="text-stroke" style="font-size: 12px; margin-top: 5px; color: #feca57;">Chạm màn hình để bay!</div>
+        </div>
+
+        <div id="questionBox">
+            <div class="q-title" id="chapterName">CHƯƠNG...</div>
+            <div class="q-text" id="mathQuestion">Đang tải câu hỏi...</div>
+        </div>
+
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        
+        <div id="gameOverScreen">
+            <h1 class="text-stroke" style="font-size: 35px; color: #ff6b6b; margin-bottom: 10px;">SAI KIẾN THỨC!</h1>
+            <h2 class="text-stroke" id="correctAnswerInfo" style="color: #1dd1a1; font-size: 14px; line-height: 1.4; margin: 10px; white-space: pre-wrap;"></h2>
+            <p class="text-stroke blink" style="font-size: 16px; margin-top: 15px;">Chạm để chơi lại</p>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('scoreText');
+        const goScreen = document.getElementById('gameOverScreen');
+        const questionEl = document.getElementById('mathQuestion');
+        const chapterEl = document.getElementById('chapterName');
+        const infoEl = document.getElementById('correctAnswerInfo');
+
+        const playerImg = new Image(); playerImg.src = 'miku.png';
+
+        let gameRunning = true;
+        let score = 0;
+        let gameSpeed = 1.8; 
+        let frame = 0;
+        let walls = [];
+        const GROUND_HEIGHT = 20;
+        const PLAY_AREA = canvas.height - GROUND_HEIGHT; 
+
+        // --- BỘ ĐỀ THI VI MÔ CỦA BẠN ---
+        const questionBank = [
+            { chapter: "Chương 2 & Căn bản", text: "61. Nếu cung hoàn toàn không co giãn, giá sẽ tăng khi chính phủ đánh thuế lên NSX.", answer: "SAI", explain: "Cung không co giãn -> NSX chịu 100% thuế." },
+            { chapter: "Chương 2: Cung Cầu", text: "62. Cầu dịch phải thành D2. Độ co giãn của D2 giảm so với D1.", answer: "ĐÚNG", explain: "Dịch song song sang phải -> độ co giãn giảm." },
+            { chapter: "Chương 3: Co Giãn", text: "63. Cung dài hạn co giãn hơn cung ngắn hạn.", answer: "ĐÚNG", explain: "Dài hạn NSX có đủ thời gian thay đổi." },
+            { chapter: "Chương 3: Co Giãn", text: "64. HH định nghĩa rộng có độ co giãn lớn hơn HH định nghĩa hẹp.", answer: "SAI", explain: "HH hẹp có nhiều sp thay thế hơn -> co giãn LỚN HƠN." },
+            { chapter: "Chương 3: Co Giãn", text: "65. Hai đường cầu cắt nhau, đường dốc hơn ít co giãn hơn.", answer: "ĐÚNG", explain: "" },
+            { chapter: "Chương 3: Co Giãn", text: "66. Hệ số co giãn chéo âm thì X và Y là HH thông thường.", answer: "SAI", explain: "Co giãn chéo ÂM = hàng hóa BỔ SUNG." },
+            { chapter: "Chương 2: Cung Cầu", text: "67. Gánh nặng thuế nghiêng về phía ít co giãn hơn.", answer: "ĐÚNG", explain: "" },
+            { chapter: "Chương 3: Co Giãn", text: "68. Doanh thu max nếu cầu co giãn hoàn toàn.", answer: "SAI", explain: "Doanh thu max khi cầu co giãn ĐƠN VỊ (|Ed| = 1)." },
+            { chapter: "Chương 3: Co Giãn", text: "69. Muốn tăng doanh thu cho HH có nhiều sp thay thế thì cần tăng giá.", answer: "SAI", explain: "Phải GIẢM giá mới tăng TR." },
+            { chapter: "Chương 3: Co Giãn", text: "78. Hàng thiết yếu ít co giãn, hàng xa xỉ co giãn tương đối.", answer: "ĐÚNG", explain: "" },
+            { chapter: "Chương: HV NTD", text: "91. Sàn giá làm tăng thặng dư tiêu dùng.", answer: "SAI", explain: "Sàn giá bảo vệ NSX -> giảm CS." },
+            { chapter: "Chương: HV NTD", text: "96. Thu nhập thay đổi làm tăng độ dốc của đường ngân sách.", answer: "SAI", explain: "Chỉ làm dịch chuyển song song." },
+            { chapter: "Chương: HV NTD", text: "105. Hàng Giffen phải là hàng thứ cấp và ngược lại.", answer: "SAI", explain: "Thứ cấp CHƯA CHẮC đã là Giffen." },
+            { chapter: "Chương: HV NTD", text: "116. Khi giá giảm, ảnh hưởng thu nhập luôn âm.", answer: "SAI", explain: "Ảnh hưởng thu nhập tùy thuộc tính chất hàng hóa." }
+        ];
+
+        function getRandomQuestion() {
+            return questionBank[Math.floor(Math.random() * questionBank.length)];
+        }
+
+        const player = {
+            x: 50, y: 150, width: 50, height: 50, 
+            dy: 0, jumpPower: 5.5, gravity: 0.25,  
+            
+            draw: function() {
+                if (playerImg.complete) ctx.drawImage(playerImg, this.x, this.y, this.width, this.height);
+                else { ctx.fillStyle = "pink"; ctx.fillRect(this.x, this.y, this.width, this.height); }
+            },
+            update: function() {
+                this.dy += this.gravity; this.y += this.dy;
+                if (this.y + this.height > PLAY_AREA) { this.y = PLAY_AREA - this.height; this.dy = 0; }
+                if (this.y < 0) { this.y = 0; this.dy = 0; } 
+            },
+            jump: function() { this.dy = -this.jumpPower; }
+        };
+
+        class Wall {
+            constructor() {
+                this.x = canvas.width;
+                this.width = 120; 
+                this.gateHeight = PLAY_AREA / 2; 
+                
+                this.qData = getRandomQuestion(); 
+                this.correctIndex = (this.qData.answer === "ĐÚNG") ? 0 : 1; 
+
+                this.passed = false;
+                this.markedForDeletion = false;
+            }
+            update() {
+                this.x -= gameSpeed;
+                if (this.x + this.width < 0) this.markedForDeletion = true;
+
+                if (!this.passed && this.x + this.width < player.x) {
+                    score++; scoreEl.innerText = "Điểm: " + score;
+                    this.passed = true;
+                    if(score % 5 === 0) gameSpeed += 0.1; 
+                }
+            }
+            draw() {
+                const options = ["ĐÚNG", "SAI"];
+                const colors = ["rgba(46, 204, 113, 0.9)", "rgba(231, 76, 60, 0.9)"]; 
+
+                for (let i = 0; i < 2; i++) {
+                    let gateY = i * this.gateHeight;
+
+                    ctx.fillStyle = colors[i];
+                    ctx.fillRect(this.x, gateY, this.width, this.gateHeight);
+                    
+                    ctx.strokeStyle = "#fff"; ctx.lineWidth = 3;
+                    ctx.strokeRect(this.x, gateY, this.width, this.gateHeight);
+
+                    ctx.fillStyle = "#fff"; ctx.font = "bold 26px Arial";
+                    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.fillText(options[i], this.x + this.width/2, gateY + this.gateHeight/2);
+                }
+            }
+        }
+
+        function checkCollision(p, wall) {
+            let paddingX = 10; 
+            
+            if (p.x + p.width - paddingX > wall.x && p.x + paddingX < wall.x + wall.width) {
+                
+                let correctTop = wall.correctIndex * wall.gateHeight;
+                let correctBottom = correctTop + wall.gateHeight;
+
+                let margin = wall.gateHeight * 0.25; 
+                let safeTop = correctTop - margin;
+                let safeBottom = correctBottom + margin;
+
+                let playerCenterY = p.y + p.height / 2;
+                
+                if (playerCenterY < safeTop || playerCenterY > safeBottom) {
+                    let extraExplain = wall.qData.explain ? `\nGiải thích: ${wall.qData.explain}` : "";
+                    infoEl.innerText = `Đáp án là: ${wall.qData.answer} ${extraExplain}`;
+                    return true; 
+                }
+            }
+            return false;
+        }
+
+        function handleWalls() {
+            if (walls.length === 0 || walls[walls.length - 1].x < canvas.width - 850) {
+                walls.push(new Wall());
+            }
+
+            let activeWall = walls.find(w => w.x + w.width > player.x);
+            if (activeWall) {
+                chapterEl.innerText = activeWall.qData.chapter;
+                questionEl.innerText = activeWall.qData.text;
+            }
+
+            for (let i = 0; i < walls.length; i++) {
+                walls[i].update(); walls[i].draw();
+                if (checkCollision(player, walls[i])) gameOver();
+            }
+            walls = walls.filter(w => !w.markedForDeletion);
+        }
+
+        function animate() {
+            if (!gameRunning) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = "#34495e"; ctx.fillRect(0, PLAY_AREA, canvas.width, GROUND_HEIGHT);
+            ctx.fillStyle = "#2c3e50"; ctx.fillRect(0, PLAY_AREA + 5, canvas.width, 15);
+
+            player.update(); player.draw(); handleWalls();
+            frame++; requestAnimationFrame(animate);
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            goScreen.style.display = 'flex';
+        }
+
+        function doAction(e) {
+            // Chặn các thao tác mặc định của điện thoại (như zoom, cuộn)
+            if(e.cancelable) e.preventDefault(); 
+            
+            if (!gameRunning) {
+                // Thay vì reload trang (location.reload) làm màn hình bị giật, ta gọi lại hàm reset
+                walls = []; score = 0; gameSpeed = 1.8; frame = 0;
+                scoreEl.innerText = "Điểm: 0";
+                goScreen.style.display = 'none';
+                player.y = 150; player.dy = 0;
+                gameRunning = true;
+                animate();
+            } else {
+                player.jump();
+            }
+        }
+
+        // Bắt sự kiện chạm trên màn hình điện thoại
+        window.addEventListener('touchstart', doAction, {passive: false});
+        // Bắt sự kiện chuột/phím cho máy tính
+        window.addEventListener('mousedown', doAction);
+        window.addEventListener('keydown', (e) => {
+            if(e.code === 'Space' || e.key === ' ') doAction(e);
+        });
+
+        animate();
+
+    </script>
+</body>
+</html>
