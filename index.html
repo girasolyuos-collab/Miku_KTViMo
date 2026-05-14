@@ -2,18 +2,19 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> <title>Miku Microeconomics: Final Exam</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Miku Microeconomics: NSX Edition</title>
     <style>
         body {
             margin: 0; display: flex; justify-content: center; align-items: center;
             min-height: 100vh; background-color: #222;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             overflow: hidden; user-select: none;
-            touch-action: none; /* CHẶN THAO TÁC CUỘN/ZOOM BẰNG TAY */
+            touch-action: none;
         }
         #gameContainer {
             position: relative; width: 800px; height: 400px;
-            max-width: 100vw; /* Tự thu nhỏ cho vừa điện thoại */
+            max-width: 100vw; 
             border: 4px solid #fff; background: linear-gradient(to bottom, #2c3e50, #3498db);
             cursor: pointer;
         }
@@ -25,7 +26,7 @@
             background: rgba(255, 255, 255, 0.95); padding: 10px;
             border-radius: 10px; border: 3px solid #f1c40f;
             box-shadow: 0 4px 8px rgba(0,0,0,0.3); text-align: center;
-            width: 40%; max-width: 340px; /* Thích ứng trên màn hình nhỏ */
+            width: 40%; max-width: 360px; 
         }
         .q-title { color: #e74c3c; font-size: 12px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;}
         .q-text { color: #2c3e50; font-size: 14px; font-weight: 700; line-height: 1.3; }
@@ -41,10 +42,7 @@
         .blink { animation: blinker 1s linear infinite; }
         @keyframes blinker { 50% { opacity: 0; } }
         
-        canvas {
-            width: 100%; height: 100%; /* Giúp canvas tự co giãn */
-            touch-action: none;
-        }
+        canvas { width: 100%; height: 100%; touch-action: none; }
     </style>
 </head>
 <body>
@@ -88,22 +86,48 @@
         const GROUND_HEIGHT = 20;
         const PLAY_AREA = canvas.height - GROUND_HEIGHT; 
 
-        // --- BỘ ĐỀ THI VI MÔ CỦA BẠN ---
+        // --- BỘ ĐỀ THI VI MÔ (HÀNH VI NGƯỜI SẢN XUẤT) ---
         const questionBank = [
-            { chapter: "Chương 2 & Căn bản", text: "61. Nếu cung hoàn toàn không co giãn, giá sẽ tăng khi chính phủ đánh thuế lên NSX.", answer: "SAI", explain: "Cung không co giãn -> NSX chịu 100% thuế." },
-            { chapter: "Chương 2: Cung Cầu", text: "62. Cầu dịch phải thành D2. Độ co giãn của D2 giảm so với D1.", answer: "ĐÚNG", explain: "Dịch song song sang phải -> độ co giãn giảm." },
-            { chapter: "Chương 3: Co Giãn", text: "63. Cung dài hạn co giãn hơn cung ngắn hạn.", answer: "ĐÚNG", explain: "Dài hạn NSX có đủ thời gian thay đổi." },
-            { chapter: "Chương 3: Co Giãn", text: "64. HH định nghĩa rộng có độ co giãn lớn hơn HH định nghĩa hẹp.", answer: "SAI", explain: "HH hẹp có nhiều sp thay thế hơn -> co giãn LỚN HƠN." },
-            { chapter: "Chương 3: Co Giãn", text: "65. Hai đường cầu cắt nhau, đường dốc hơn ít co giãn hơn.", answer: "ĐÚNG", explain: "" },
-            { chapter: "Chương 3: Co Giãn", text: "66. Hệ số co giãn chéo âm thì X và Y là HH thông thường.", answer: "SAI", explain: "Co giãn chéo ÂM = hàng hóa BỔ SUNG." },
-            { chapter: "Chương 2: Cung Cầu", text: "67. Gánh nặng thuế nghiêng về phía ít co giãn hơn.", answer: "ĐÚNG", explain: "" },
-            { chapter: "Chương 3: Co Giãn", text: "68. Doanh thu max nếu cầu co giãn hoàn toàn.", answer: "SAI", explain: "Doanh thu max khi cầu co giãn ĐƠN VỊ (|Ed| = 1)." },
-            { chapter: "Chương 3: Co Giãn", text: "69. Muốn tăng doanh thu cho HH có nhiều sp thay thế thì cần tăng giá.", answer: "SAI", explain: "Phải GIẢM giá mới tăng TR." },
-            { chapter: "Chương 3: Co Giãn", text: "78. Hàng thiết yếu ít co giãn, hàng xa xỉ co giãn tương đối.", answer: "ĐÚNG", explain: "" },
-            { chapter: "Chương: HV NTD", text: "91. Sàn giá làm tăng thặng dư tiêu dùng.", answer: "SAI", explain: "Sàn giá bảo vệ NSX -> giảm CS." },
-            { chapter: "Chương: HV NTD", text: "96. Thu nhập thay đổi làm tăng độ dốc của đường ngân sách.", answer: "SAI", explain: "Chỉ làm dịch chuyển song song." },
-            { chapter: "Chương: HV NTD", text: "105. Hàng Giffen phải là hàng thứ cấp và ngược lại.", answer: "SAI", explain: "Thứ cấp CHƯA CHẮC đã là Giffen." },
-            { chapter: "Chương: HV NTD", text: "116. Khi giá giảm, ảnh hưởng thu nhập luôn âm.", answer: "SAI", explain: "Ảnh hưởng thu nhập tùy thuộc tính chất hàng hóa." }
+            { chapter: "Chương: Hành vi NSX", text: "121. Chi phí chìm chính là một loại chi phí ẩn.", answer: "SAI", explain: "Chi phí chìm là chi phí đã xảy ra và không thể thu hồi, khác hoàn toàn với chi phí ẩn (chi phí cơ hội)." },
+            { chapter: "Chương: Hành vi NSX", text: "122. Kế toán viên ghi chép các luồng tiền ra vào, do đó không quan tâm đến chi phí hiện.", answer: "SAI", explain: "Kế toán viên RẤT quan tâm đến chi phí hiện (chi phí kế toán). Họ chỉ bỏ qua chi phí ẩn." },
+            { chapter: "Chương: Hành vi NSX", text: "123. Khoảng cách theo chiều dọc giữa ATC và AVC luôn không đổi ở mọi mức sản lượng.", answer: "SAI", explain: "Khoảng cách đó chính là AFC. Khi sản lượng tăng, AFC sẽ giảm dần về 0 nên khoảng cách hẹp dần." },
+            { chapter: "Chương: Hành vi NSX", text: "124. Nếu chi phí cận biên (MC) lớn hơn doanh thu cận biên (MR) thì doanh nghiệp nên cắt giảm sản lượng.", answer: "ĐÚNG", explain: "Khi MC > MR, việc sản xuất thêm làm giảm lợi nhuận. Cắt giảm sản xuất sẽ làm tăng lợi nhuận." },
+            { chapter: "Chương: Hành vi NSX", text: "125. Khi tổng sản phẩm (TP) đang tăng thì sản phẩm cận biên (MP) vẫn có thể giảm nhưng lớn hơn 0.", answer: "ĐÚNG", explain: "Trong giai đoạn 2 của hàm sản xuất, MP > 0 (TP tăng) nhưng MP đang có xu hướng giảm dần." },
+            { chapter: "Chương: Hành vi NSX", text: "126. Nếu đường đồng phí luôn dốc hơn đường đồng lượng, kết hợp tối ưu là chỉ sử dụng vốn (trục tung).", answer: "ĐÚNG", explain: "Đây là giải pháp góc. Hãng sẽ dồn tiền mua yếu tố rẻ hơn tương đối để tối ưu hóa." },
+            { chapter: "Chương: Hành vi NSX", text: "127. Đánh thuế vào hãng tối đa hoá doanh thu sẽ làm giá tăng và sản lượng giảm.", answer: "SAI", explain: "Hãng tối đa hóa doanh thu khi MR = 0. Đánh thuế không làm đổi MR, nên P và Q không đổi." },
+            { chapter: "Chương: Hành vi NSX", text: "128. Tỉ lệ thay thế kỹ thuật cận biên (MRTS) luôn giảm dần khi tăng sử dụng yếu tố lao động.", answer: "ĐÚNG", explain: "Đó là định nghĩa gốc của Quy luật MRTS giảm dần." },
+            { chapter: "Chương: Hành vi NSX", text: "129. Ngắn hạn là khoảng thời gian mà tất cả các yếu tố đầu vào không thay đổi.", answer: "SAI", explain: "Ngắn hạn là khi có ÍT NHẤT MỘT yếu tố cố định, các yếu tố khác (như L) vẫn thay đổi được." },
+            { chapter: "Chương: Hành vi NSX", text: "130. Kết hợp sản xuất tối ưu đạt được khi sản xuất một mức sản lượng với chi phí nhỏ nhất.", answer: "ĐÚNG", explain: "Đây là nguyên lý của bài toán tối thiểu hóa chi phí." },
+            { chapter: "Chương: Hành vi NSX", text: "131. Nếu tăng hay giảm Q đều làm chi phí bình quân tăng lên thì quy mô hiện tại đang là tối ưu.", answer: "ĐÚNG", explain: "Điều này chứng tỏ hãng đang sản xuất tại điểm cực tiểu của đường chi phí bình quân (đáy chữ U)." },
+            { chapter: "Chương: Hành vi NSX", text: "132. Các đường chi phí bình quân trong ngắn hạn luôn có dạng chữ U.", answer: "SAI", explain: "Đường chi phí cố định bình quân (AFC) luôn dốc xuống, không phải hình chữ U." },
+            { chapter: "Chương: Hành vi NSX", text: "133. Các yếu tố sản xuất như lao động và máy móc không thể thay thế cho nhau.", answer: "SAI", explain: "Trong dài hạn, hãng hoàn toàn có thể sử dụng công nghệ nhiều máy móc hơn để thay thế lao động." },
+            { chapter: "Chương: Hành vi NSX", text: "134. Quy luật MP giảm dần cho biết MP của LĐ sau luôn nhỏ hơn LĐ trước.", answer: "SAI", explain: "Chỉ đúng từ một số lượng lao động nhất định. Ban đầu MP có thể tăng do chuyên môn hóa." },
+            { chapter: "Chương: Hành vi NSX", text: "135. Hình dáng của đường TC ngắn hạn không liên quan đến hình dáng của đường tổng sản phẩm TP.", answer: "SAI", explain: "Hình dáng đường chi phí bị chi phối trực tiếp bởi hàm sản xuất (đường TP)." },
+            { chapter: "Chương: Hành vi NSX", text: "136. Đường MC và AVC có dạng chữ U là do quy luật sản phẩm cận biên giảm dần.", answer: "ĐÚNG", explain: "MP tăng rồi giảm làm cho MC và AVC giảm rồi tăng (tạo hình chữ U)." },
+            { chapter: "Chương: Hành vi NSX", text: "137. Doanh thu bình quân (AR) của hãng luôn bằng mức giá (P) trong mọi trường hợp.", answer: "ĐÚNG", explain: "AR = TR / Q = (P * Q) / Q = P." },
+            { chapter: "Chương: Hành vi NSX", text: "138. Khoảng thời gian ngắn hạn có thể khác nhau giữa các hãng nhưng không quá 3 năm.", answer: "SAI", explain: "Ngắn hạn hay dài hạn phụ thuộc vào sự linh hoạt thay đổi quy mô, không quy định bằng thời gian cụ thể." },
+            { chapter: "Chương: Hành vi NSX", text: "139. Nếu chi phí cận biên (MC) bắt đầu tăng thì tổng chi phí bình quân (ATC) cũng sẽ tăng.", answer: "SAI", explain: "Nếu MC đang tăng nhưng vẫn NHỎ HƠN ATC thì ATC sẽ tiếp tục giảm." },
+            { chapter: "Chương: Hành vi NSX", text: "140. Tổng chi phí bình quân không chịu sự ảnh hưởng của quy luật sản phẩm cận biên giảm dần.", answer: "SAI", explain: "Có chịu ảnh hưởng. Năng suất giảm làm chi phí tăng lên, khiến ATC có nhánh đi lên." },
+            { chapter: "Chương: Hành vi NSX", text: "141. Sản phẩm cận biên được tính bằng sản lượng chia cho số đầu vào sử dụng.", answer: "SAI", explain: "Đó là công thức của Sản phẩm BÌNH QUÂN (AP = Q/L), không phải sản phẩm cận biên (MP)." },
+            { chapter: "Chương: Hành vi NSX", text: "142. Nếu đồ thị hàm sản xuất ngày càng thoải thì năng suất cận biên đang tăng dần.", answer: "SAI", explain: "Đồ thị thoải dần chứng tỏ độ dốc giảm, tức là năng suất cận biên (MP) đang GIẢM DẦN." },
+            { chapter: "Chương: Hành vi NSX", text: "143. Quỹ tích các điểm kết hợp tối ưu là cơ sở để xây dựng đường tổng chi phí dài hạn.", answer: "ĐÚNG", explain: "Quỹ tích đó được gọi là đường phát triển (Expansion Path)." },
+            { chapter: "Chương: Hành vi NSX", text: "144. DN tối đa hóa lợi nhuận sẽ bán giá cao hơn và lượng thấp hơn DN tối đa hóa doanh thu.", answer: "ĐÚNG", explain: "Max Profit tại MR=MC. Max Revenue tại MR=0. Do MC>0 nên sản lượng max profit nhỏ hơn." },
+            { chapter: "Chương: Hành vi NSX", text: "145. Đường chi phí bình quân dài hạn (LAC) là đường bao của các đường SAC ngắn hạn.", answer: "ĐÚNG", explain: "LAC được tạo thành từ tập hợp các quy mô tối ưu nhất của ngắn hạn." },
+            { chapter: "Chương: Hành vi NSX", text: "146. Đường AP cắt đường MP tại điểm cực đại của đường MP.", answer: "SAI", explain: "Cắt nhau tại điểm CỰC ĐẠI CỦA AP, không phải của MP." },
+            { chapter: "Chương: Hành vi NSX", text: "147. Nếu MPL / w > MPK / r thì hãng nên tăng sử dụng yếu tố lao động.", answer: "ĐÚNG", explain: "1 đồng chi cho lao động đang mang lại nhiều sản lượng hơn chi cho vốn." },
+            { chapter: "Chương: Hành vi NSX", text: "148. Đường ATC ngắn hạn cắt đường MC tại điểm cực tiểu của MC.", answer: "SAI", explain: "MC sẽ luôn cắt ATC tại CỰC TIỂU CỦA ATC." },
+            { chapter: "Chương: Hành vi NSX", text: "149. Quy luật năng suất cận biên giảm dần đúng cả trong ngắn hạn và dài hạn.", answer: "SAI", explain: "Quy luật này chỉ đúng trong NGẮN HẠN do có yếu tố đầu vào bị cố định." },
+            { chapter: "Chương: Hành vi NSX", text: "150. Hàm Cobb-Douglass có α + β > 1 là hàm có hiệu suất giảm theo quy mô.", answer: "SAI", explain: "Tổng hệ số > 1 là hiệu suất TĂNG theo quy mô." },
+            { chapter: "Chương: Hành vi NSX", text: "151. Với sản xuất có tính kinh tế theo quy mô, đường LMC luôn nằm trên đường LAC.", answer: "SAI", explain: "Tính kinh tế theo quy mô tức là LAC đang đi xuống, khi đó LMC phải nằm DƯỚI LAC." },
+            { chapter: "Chương: Hành vi NSX", text: "152. Nếu hãng có hiệu suất không đổi theo quy mô, đường LAC dốc lên từ trái qua phải.", answer: "SAI", explain: "Hiệu suất không đổi thì chi phí bình quân LAC là một ĐƯỜNG NẰM NGANG." },
+            { chapter: "Chương: Hành vi NSX", text: "153. Sự chuyên môn hóa giúp sản xuất ở quy mô lớn có chi phí thấp hơn.", answer: "ĐÚNG", explain: "Đây là nguyên nhân phổ biến nhất dẫn đến Tính kinh tế theo quy mô." },
+            { chapter: "Chương: Hành vi NSX", text: "154. Đường đồng lượng thể hiện các kết hợp đầu vào khác nhau với cùng một mức lợi nhuận.", answer: "SAI", explain: "Đường đồng lượng thể hiện cùng một mức SẢN LƯỢNG, không phải lợi nhuận." },
+            { chapter: "Chương: Hành vi NSX", text: "155. Tính phi kinh tế theo quy mô xuất hiện do mở rộng làm tăng chuyên môn hóa.", answer: "SAI", explain: "Phi kinh tế quy mô thường xuất hiện do khó khăn, cồng kềnh trong bộ máy quản lý." },
+            { chapter: "Chương: Hành vi NSX", text: "156. Đường AVC có xu hướng tiệm cận đường ATC khi sản lượng tăng.", answer: "ĐÚNG", explain: "Vì ATC = AVC + AFC. Khi Q tăng, AFC tiến về 0 nên AVC tiến lại gần ATC." },
+            { chapter: "Chương: Hành vi NSX", text: "157. Do quy luật MP giảm dần, đường MC là đường dốc lên từ trái qua phải.", answer: "ĐÚNG", explain: "Năng suất biên giảm thì chi phí để làm ra thêm 1 sản phẩm sẽ ngày càng tăng cao." },
+            { chapter: "Chương: Hành vi NSX", text: "158. Để tối đa hóa lợi nhuận, hãng sản xuất tại mức có AR = AC.", answer: "SAI", explain: "Tối đa hóa lợi nhuận khi MR = MC. Mức AR = AC chỉ là điểm hòa vốn (lợi nhuận kinh tế = 0)." },
+            { chapter: "Chương: Hành vi NSX", text: "159. Nếu không có tiếp điểm giữa đường đồng phí và đồng lượng thì không có kết hợp tối ưu.", answer: "SAI", explain: "Vẫn có thể đạt tối ưu ở Giải Pháp Góc (chỉ dùng toàn bộ Vốn hoặc toàn bộ Lao động)." },
+            { chapter: "Chương: Hành vi NSX", text: "160. Khi tự dùng máy móc của mình thì chi phí kinh tế sẽ nhỏ hơn khi đi thuê.", answer: "SAI", explain: "Chi phí kinh tế tính cả Chi Phí Cơ Hội, tức là bỏ lỡ số tiền cho người khác thuê, nên chi phí bằng nhau." }
         ];
 
         function getRandomQuestion() {
@@ -172,7 +196,6 @@
             let paddingX = 10; 
             
             if (p.x + p.width - paddingX > wall.x && p.x + paddingX < wall.x + wall.width) {
-                
                 let correctTop = wall.correctIndex * wall.gateHeight;
                 let correctBottom = correctTop + wall.gateHeight;
 
@@ -184,7 +207,7 @@
                 
                 if (playerCenterY < safeTop || playerCenterY > safeBottom) {
                     let extraExplain = wall.qData.explain ? `\nGiải thích: ${wall.qData.explain}` : "";
-                    infoEl.innerText = `Đáp án là: ${wall.qData.answer} ${extraExplain}`;
+                    infoEl.innerText = `Đáp án đúng là: ${wall.qData.answer} ${extraExplain}`;
                     return true; 
                 }
             }
@@ -226,11 +249,9 @@
         }
 
         function doAction(e) {
-            // Chặn các thao tác mặc định của điện thoại (như zoom, cuộn)
             if(e.cancelable) e.preventDefault(); 
             
             if (!gameRunning) {
-                // Thay vì reload trang (location.reload) làm màn hình bị giật, ta gọi lại hàm reset
                 walls = []; score = 0; gameSpeed = 1.8; frame = 0;
                 scoreEl.innerText = "Điểm: 0";
                 goScreen.style.display = 'none';
@@ -242,9 +263,7 @@
             }
         }
 
-        // Bắt sự kiện chạm trên màn hình điện thoại
         window.addEventListener('touchstart', doAction, {passive: false});
-        // Bắt sự kiện chuột/phím cho máy tính
         window.addEventListener('mousedown', doAction);
         window.addEventListener('keydown', (e) => {
             if(e.code === 'Space' || e.key === ' ') doAction(e);
