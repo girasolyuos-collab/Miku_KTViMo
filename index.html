@@ -101,13 +101,13 @@
 
         let gameRunning = true;
         let score = 0;
-        let gameSpeed = 1.3; 
+        let gameSpeed = 1.8; 
         let frame = 0;
         let walls = [];
         const GROUND_HEIGHT = 20;
         const PLAY_AREA = canvas.height - GROUND_HEIGHT; 
 
-        // --- BỘ ĐỀ THI VI MÔ (TỔNG HỢP 100 CÂU TỪ 3 CHƯƠNG) ---
+        // --- BỘ ĐỀ THI VI MÔ: CHƯƠNG 2 - CUNG VÀ CẦU ---
                 const questionBank = [
             // ---CHƯƠNG 1: TỔNG QUAN ---
             { chapter: "Chương 1: Mở đầu", text: "1. Kinh tế học chuẩn tắc trả lời câu hỏi “cần phải làm gì” trong khi kinh tế học thực chứng trả lời câu hỏi “chuyện gì đang xảy ra”.", answer: "ĐÚNG", explain: "Kinh tế học chuẩn tắc mang tính khuyến nghị/đánh giá (cần làm gì), còn thực chứng mang tính mô tả khách quan sự thật." },
@@ -254,7 +254,6 @@
             dy: 0, jumpPower: 5.5, gravity: 0.25,  
             
             draw: function() {
-                // Cập nhật vị trí thẻ ảnh đè lên trên nền xanh nhưng nằm DƯỚI bức tường
                 mikuGif.style.display = 'block';
                 mikuGif.style.left = this.x + 'px';
                 mikuGif.style.top = this.y + 'px';
@@ -268,6 +267,44 @@
             },
             jump: function() { this.dy = -this.jumpPower; }
         };
+
+        // Biến kiểm soát trạng thái game
+        let isPausedForSuccess = false; 
+
+        // --- CÁC HÀM HIỆN PHẢN HỒI ---
+        function showCorrect(qData) {
+            gameRunning = false;
+            isPausedForSuccess = true;
+            
+            document.querySelector('#gameOverScreen h1').innerText = "CHÍNH XÁC!";
+            document.querySelector('#gameOverScreen h1').style.color = "#2ecc71"; 
+            
+            let extraExplain = qData.explain ? `<br><br><b>Giải thích:</b> ${qData.explain}` : "";
+            infoEl.innerHTML = `Đáp án là: <span style="color:#f1c40f">${qData.answer}</span> ${extraExplain}`;
+            
+            document.querySelector('#gameOverScreen p').innerText = "Chạm để bay tiếp >>";
+            document.querySelector('#gameOverScreen p').style.color = "#2ecc71";
+            
+            goScreen.style.display = 'flex';
+            mikuGif.style.display = 'none'; 
+        }
+
+        function gameOver(wall) {
+            gameRunning = false;
+            isPausedForSuccess = false; 
+            
+            document.querySelector('#gameOverScreen h1').innerText = "SAI KIẾN THỨC!";
+            document.querySelector('#gameOverScreen h1').style.color = "#ff6b6b"; 
+            
+            let extraExplain = wall.qData.explain ? `<br><br><b>Giải thích:</b> ${wall.qData.explain}` : "";
+            infoEl.innerHTML = `Đáp án đúng phải là: <span style="color:#f1c40f">${wall.qData.answer}</span> ${extraExplain}`;
+            
+            document.querySelector('#gameOverScreen p').innerText = "Chạm để làm lại từ đầu";
+            document.querySelector('#gameOverScreen p').style.color = "#feca57";
+
+            goScreen.style.display = 'flex';
+            mikuGif.style.display = 'none';
+        }
 
         class Wall {
             constructor() {
@@ -285,10 +322,13 @@
                 this.x -= gameSpeed;
                 if (this.x + this.width < 0) this.markedForDeletion = true;
 
+                // FIX LỖI Ở ĐÂY: Hiện giải thích đúng ngay khi vừa vượt qua cổng
                 if (!this.passed && this.x + this.width < player.x) {
                     score++; scoreEl.innerText = "Điểm: " + score;
                     this.passed = true;
                     if(score % 5 === 0) gameSpeed += 0.1; 
+                    
+                    showCorrect(this.qData);
                 }
             }
             draw() {
@@ -325,9 +365,6 @@
                 let playerCenterY = p.y + p.height / 2;
                 
                 if (playerCenterY < safeTop || playerCenterY > safeBottom) {
-                    // Dùng mã HTML (<br> và <b>) để hiển thị giải thích đẹp mắt và xuống dòng được
-                    let extraExplain = wall.qData.explain ? `<br><br><b>Giải thích:</b> ${wall.qData.explain}` : "";
-                    infoEl.innerHTML = `Đáp án là: <span style="color:#f1c40f">${wall.qData.answer}</span> ${extraExplain}`;
                     return true; 
                 }
             }
@@ -346,18 +383,20 @@
             }
 
             for (let i = 0; i < walls.length; i++) {
-                walls[i].update(); walls[i].draw();
-                if (checkCollision(player, walls[i])) gameOver();
+                walls[i].update(); 
+                walls[i].draw();
+                
+                if (checkCollision(player, walls[i])) {
+                    gameOver(walls[i]);
+                }
             }
             walls = walls.filter(w => !w.markedForDeletion);
         }
 
         function animate() {
             if (!gameRunning) return;
-            // Quan trọng: Chỉ xóa canvas thành trong suốt để thấy được hình GIF ở dưới
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Vẽ đất
             ctx.fillStyle = "#34495e"; ctx.fillRect(0, PLAY_AREA, canvas.width, GROUND_HEIGHT);
             ctx.fillStyle = "#2c3e50"; ctx.fillRect(0, PLAY_AREA + 5, canvas.width, 15);
 
@@ -365,22 +404,27 @@
             frame++; requestAnimationFrame(animate);
         }
 
-        function gameOver() {
-            gameRunning = false;
-            goScreen.style.display = 'flex';
-            mikuGif.style.display = 'none'; // Giấu Miku đi khi màn hình báo lỗi hiện lên
-        }
-
         function doAction(e) {
             if(e.cancelable) e.preventDefault(); 
             
             if (!gameRunning) {
-                walls = []; score = 0; gameSpeed = 1.0; frame = 0;
-                scoreEl.innerText = "Điểm: 0";
-                goScreen.style.display = 'none';
-                player.y = 150; player.dy = 0;
-                gameRunning = true;
-                animate();
+                if (isPausedForSuccess) {
+                    // Chơi tiếp nếu vừa trả lời đúng
+                    goScreen.style.display = 'none';
+                    gameRunning = true;
+                    isPausedForSuccess = false;
+                    player.dy = 0; 
+                    player.jump(); 
+                    animate(); 
+                } else {
+                    // Chơi lại từ đầu nếu đâm sai
+                    walls = []; score = 0; gameSpeed = 1.8; frame = 0;
+                    scoreEl.innerText = "Điểm: 0";
+                    goScreen.style.display = 'none';
+                    player.y = 150; player.dy = 0;
+                    gameRunning = true;
+                    animate();
+                }
             } else {
                 player.jump();
             }
