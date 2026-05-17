@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Miku Microeconomics: NSX Edition</title>
+    <title>Miku Microeconomics: Final Exam</title>
     <style>
         body {
             margin: 0; display: flex; justify-content: center; align-items: center;
@@ -12,17 +12,39 @@
             overflow: hidden; user-select: none;
             touch-action: none;
         }
+        
+        /* LỚP 1: NỀN TRỜI XANH (Nằm dưới cùng) */
         #gameContainer {
             position: relative; width: 800px; height: 400px;
             max-width: 100vw; 
-            border: 4px solid #fff; background: linear-gradient(to bottom, #2c3e50, #3498db);
-            cursor: pointer;
+            border: 4px solid #fff; 
+            background: linear-gradient(to bottom, #2c3e50, #3498db);
+            cursor: pointer; overflow: hidden;
         }
+        
+        /* LỚP 2: MIKU GIF (Nằm giữa nền và tường) */
+        #mikuGif {
+            position: absolute; 
+            z-index: 10; /* Nhỏ hơn Canvas */
+            pointer-events: none;
+            display: none;
+        }
+
+        /* LỚP 3: CANVAS VẼ TƯỜNG (Nền trong suốt, đè lên Miku) */
+        #gameCanvas { 
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; 
+            z-index: 20; /* Lớn hơn Miku */
+            background: transparent; 
+            pointer-events: none;
+        }
+
+        /* LỚP 4: GIAO DIỆN CÂU HỎI & ĐIỂM SỐ */
         #ui-layer {
-            position: absolute; top: 10px; left: 10px; z-index: 10; pointer-events: none;
+            position: absolute; top: 10px; left: 10px; z-index: 30; pointer-events: none;
         }
         #questionBox {
-            position: absolute; top: 10px; right: 10px; z-index: 10;
+            position: absolute; top: 10px; right: 10px; z-index: 30;
             background: rgba(255, 255, 255, 0.95); padding: 10px;
             border-radius: 10px; border: 3px solid #f1c40f;
             box-shadow: 0 4px 8px rgba(0,0,0,0.3); text-align: center;
@@ -30,24 +52,24 @@
         }
         .q-title { color: #e74c3c; font-size: 12px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;}
         .q-text { color: #2c3e50; font-size: 14px; font-weight: 700; line-height: 1.3; }
-        
         .text-stroke { color: white; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 0 #000; }
         
+        /* LỚP 5: MÀN HÌNH GAME OVER (Nằm trên cùng che mọi thứ) */
         #gameOverScreen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.9); display: none; flex-direction: column;
-            justify-content: center; align-items: center; color: white; z-index: 20;
+            justify-content: center; align-items: center; color: white; z-index: 1000;
             text-align: center; padding: 20px; box-sizing: border-box;
         }
         .blink { animation: blinker 1s linear infinite; }
         @keyframes blinker { 50% { opacity: 0; } }
-        
-        canvas { width: 100%; height: 100%; touch-action: none; }
     </style>
 </head>
 <body>
 
     <div id="gameContainer">
+        <img id="mikuGif" src="https://media.tenor.com/qyOa57fdQOUAAAAj/miku-run.gif" alt="miku">
+
         <div id="ui-layer">
             <div class="text-stroke" id="scoreText">Điểm: 0</div>
             <div class="text-stroke" style="font-size: 12px; margin-top: 5px; color: #feca57;">Chạm màn hình để bay!</div>
@@ -62,8 +84,8 @@
         
         <div id="gameOverScreen">
             <h1 class="text-stroke" style="font-size: 35px; color: #ff6b6b; margin-bottom: 10px;">SAI KIẾN THỨC!</h1>
-            <h2 class="text-stroke" id="correctAnswerInfo" style="color: #1dd1a1; font-size: 14px; line-height: 1.4; margin: 10px; white-space: pre-wrap;"></h2>
-            <p class="text-stroke blink" style="font-size: 16px; margin-top: 15px;">Chạm để chơi lại</p>
+            <div class="text-stroke" id="correctAnswerInfo" style="color: #1dd1a1; font-size: 15px; line-height: 1.5; margin: 10px; max-width: 90%;"></div>
+            <p class="text-stroke blink" style="font-size: 16px; margin-top: 15px; color: #feca57;">Chạm để học lại</p>
         </div>
     </div>
 
@@ -75,19 +97,112 @@
         const questionEl = document.getElementById('mathQuestion');
         const chapterEl = document.getElementById('chapterName');
         const infoEl = document.getElementById('correctAnswerInfo');
-
-        const playerImg = new Image(); playerImg.src = 'miku.png';
+        const mikuGif = document.getElementById('mikuGif');
 
         let gameRunning = true;
         let score = 0;
-        let gameSpeed = 1.8; 
+        let gameSpeed = 1.3; 
         let frame = 0;
         let walls = [];
         const GROUND_HEIGHT = 20;
         const PLAY_AREA = canvas.height - GROUND_HEIGHT; 
 
-        // --- BỘ ĐỀ THI VI MÔ (HÀNH VI NGƯỜI SẢN XUẤT) ---
-        const questionBank = [
+        // --- BỘ ĐỀ THI VI MÔ (TỔNG HỢP 100 CÂU TỪ 3 CHƯƠNG) ---
+                const questionBank = [
+            // ---CHƯƠNG 1: TỔNG QUAN ---
+            { chapter: "Chương 1: Mở đầu", text: "1. Kinh tế học chuẩn tắc trả lời câu hỏi “cần phải làm gì” trong khi kinh tế học thực chứng trả lời câu hỏi “chuyện gì đang xảy ra”.", answer: "ĐÚNG", explain: "Kinh tế học chuẩn tắc mang tính khuyến nghị/đánh giá (cần làm gì), còn thực chứng mang tính mô tả khách quan sự thật." },
+            { chapter: "Chương 1: Mở đầu", text: "2. Nếu biết lập kế hoạch tốt thì chúng ta có thể có được một thứ gì đó mà không phải từ bỏ những thứ khác mà chúng ta đang có.", answer: "SAI", explain: "Do nguồn lực luôn khan hiếm, mọi sự lựa chọn đều phải đánh đổi (có chi phí cơ hội), dù kế hoạch có tốt đến đâu." },
+            { chapter: "Chương 1: Mở đầu", text: "3. Khi chi phí cơ hội của một hành động tăng lên, mọi người sẽ thay thế hoạt động đó bằng một hoạt động khác.", answer: "ĐÚNG", explain: "Đây là nguyên lý: Con người luôn phản ứng với các khuyến khích và thay đổi của chi phí." },
+            { chapter: "Chương 1: Mở đầu", text: "4. Nền KT thị trường không thể sản xuất như xã hội mong đợi vì các tác nhân có động cơ duy nhất là lợi ích bản thân.", answer: "SAI", explain: "Bàn tay vô hình của Adam Smith chỉ ra rằng việc theo đuổi lợi ích cá nhân thường dẫn đến kết quả phân bổ nguồn lực tốt nhất cho toàn xã hội." },
+            { chapter: "Chương 1: Mở đầu", text: "5. Trong nền kinh tế, chỉ có hộ gia đình và doanh nghiệp phải đối mặt với sự khan hiếm còn chính phủ thì không.", answer: "SAI", explain: "Mọi chủ thể trong nền kinh tế, kể cả chính phủ (ngân sách nhà nước), đều phải đối mặt với sự khan hiếm nguồn lực." },
+            { chapter: "Chương 1: Mở đầu", text: "6. Đường PPF mô tả sự kết hợp của các hàng hóa mà nền KT có thể sản xuất với yếu tố sản xuất và công nghệ hiện có.", answer: "ĐÚNG", explain: "Đây là định nghĩa chuẩn của Đường giới hạn khả năng sản xuất (PPF)." },
+            { chapter: "Chương 1: Mở đầu", text: "7. Một nền kinh tế có thể sản xuất tại bất kỳ điểm nào bên ngoài PPF nhưng không thể sản xuất tại điểm bên trong nó.", answer: "SAI", explain: "Ngược lại: Không thể sản xuất ĐIỂM BÊN NGOÀI (do thiếu nguồn lực), nhưng CÓ THỂ sản xuất ĐIỂM BÊN TRONG (lúc này là phi hiệu quả)." },
+            { chapter: "Chương 1: Mở đầu", text: "8. Trong mô hình dòng luân chuyển, có một vòng quay của hàng hóa, dịch vụ và các yếu tố đầu vào, một vòng quay của tiền.", answer: "ĐÚNG", explain: "Dòng vật chất (hàng hóa/yếu tố sản xuất) và dòng tiền luôn chảy ngược chiều nhau." },
+            { chapter: "Chương 1: Mở đầu", text: "9. Do tài nguyên khan hiếm nên các quyết định trong nền KT chịu tác động của quy luật chi phí cơ hội TĂNG DẦN.", answer: "SAI", explain: "Khan hiếm sinh ra chi phí cơ hội. Nhưng chi phí cơ hội KHÔNG PHẢI LÚC NÀO CŨNG TĂNG DẦN (VD: PPF là đường thẳng thì chi phí cơ hội không đổi)." },
+            { chapter: "Chương 1: Mở đầu", text: "10. Kinh tế học Vi mô chỉ liên quan đến việc giải quyết các bài toán thực tế trong doanh nghiệp.", answer: "SAI", explain: "Vi mô còn nghiên cứu hành vi của hộ gia đình, cá nhân, cách họ tương tác trên thị trường và sự can thiệp của chính phủ." },
+            { chapter: "Chương 1: Mở đầu", text: "11. Phải lựa chọn vì tài nguyên là khan hiếm, khi tài nguyên đã sử dụng vào mục đích này thì sẽ không sử dụng vào mục đích khác được nữa.", answer: "ĐÚNG", explain: "Đây chính là bản chất của sự khan hiếm và đánh đổi." },
+            { chapter: "Chương 1: Mở đầu", text: "12. Sự đánh đổi giữa việc sản xuất hàng hóa này với hàng hóa khác có thể thay đổi nhờ vào tiến bộ công nghệ.", answer: "ĐÚNG", explain: "Tiến bộ công nghệ làm PPF dịch chuyển, qua đó làm thay đổi tỷ lệ đánh đổi (chi phí cơ hội) giữa 2 hàng hóa." },
+            { chapter: "Chương 1: Mở đầu", text: "13. Quy luật chi phí cơ hội tăng dần là phải hy sinh những lượng ngày càng tăng của hàng hoá này để đạt được những lượng ngày càng tăng của hàng hoá khác.", answer: "SAI", explain: "Phải là: Hy sinh lượng ngày càng tăng của hàng hóa này để đạt được lượng TĂNG THÊM BẰNG NHAU (1 đơn vị) của hàng hóa khác." },
+            { chapter: "Chương 1: Mở đầu", text: "14. Nền kinh tế tăng trưởng chậm sẽ có đường PPF rất thấp so với nền kinh tế tăng trưởng nhanh.", answer: "SAI", explain: "Tăng trưởng nhanh/chậm là 'tốc độ'. Nước lớn tăng trưởng chậm vẫn có thể có PPF nằm xa tít (cao hơn) so với nước nhỏ tăng trưởng nhanh." },
+            { chapter: "Chương 1: Mở đầu", text: "15. Trao đổi mua bán làm cho mỗi người chuyên môn hóa hoạt động của mình và vì thế mà tăng được năng suất.", answer: "ĐÚNG", explain: "Thương mại làm cho mọi người đều có lợi thông qua chuyên môn hóa theo lợi thế so sánh." },
+            { chapter: "Chương 1: Mở đầu", text: "16. Mọi doanh nghiệp đều có chung một mục tiêu lựa chọn là tối đa hóa lợi nhuận.", answer: "SAI", explain: "Doanh nghiệp có thể có mục tiêu tối đa hóa doanh thu, mở rộng thị phần, hoặc tối đa hóa hữu dụng cho xã hội." },
+            { chapter: "Chương 1: Mở đầu", text: "17. Nền kinh tế thị trường là nền kinh tế cần sự can thiệp của Chính phủ mỗi khi thị trường cần.", answer: "SAI", explain: "Nền kinh tế thị trường THUẦN TÚY không có sự can thiệp của chính phủ. Nền kinh tế HỖN HỢP mới cần chính phủ can thiệp." },
+            { chapter: "Chương 1: Mở đầu", text: "18. Một mô hình kinh tế không thể là hữu ích khi nó đơn giản hóa các hiện tượng trong thực tế.", answer: "SAI", explain: "Sức mạnh của mô hình kinh tế chính là nhờ việc giả định và đơn giản hóa các chi tiết rườm rà để tập trung vào bản chất." },
+            { chapter: "Chương 1: Mở đầu", text: "19. Chi phí của một hành động được tính bằng những cơ hội bị bỏ qua vì thực hiện hành động đó.", answer: "ĐÚNG", explain: "Đây là định nghĩa cốt lõi của Chi phí cơ hội (Opportunity Cost)." },
+            { chapter: "Chương 1: Mở đầu", text: "20. Môi trường không phải là hàng hóa trong kinh tế vì bảo vệ môi trường đem lại lợi ích mà không đòi hỏi chi phí.", answer: "SAI", explain: "Môi trường là một loại hàng hóa. Bảo vệ môi trường luôn đòi hỏi chi phí (công sức, tiền bạc, kìm hãm phát triển công nghiệp...)." },
+            { chapter: "Chương 1: Mở đầu", text: "21. PPF đi kèm với giả định các nguồn lực trong quá trình sản xuất được sử dụng toàn bộ và hiệu quả.", answer: "ĐÚNG", explain: "Chỉ khi sử dụng toàn bộ và hiệu quả nguồn lực thì nền kinh tế mới nằm TRÊN đường PPF." },
+            { chapter: "Chương 1: Mở đầu", text: "22. Đường giới hạn khả năng sản xuất là đường cong lồi so với gốc toạ độ do quy luật chi phí cơ hội tăng dần.", answer: "SAI", explain: "Đường PPF là đường CONG LÕM (concave) so với gốc tọa độ. Đường bàng quan mới là đường cong lồi (convex)." },
+            { chapter: "Chương 1: Mở đầu", text: "23. Ba vấn đề kinh tế cơ bản: “cái gì?”, “như thế nào?”, “cho ai?” là của riêng nền kinh tế thị trường.", answer: "SAI", explain: "Đây là 3 vấn đề cơ bản của MỌI nền kinh tế (kể cả kinh tế kế hoạch hóa tập trung)." },
+            { chapter: "Chương 1: Mở đầu", text: "24. Trong nền kinh tế, hộ gia đình là người mua hàng và doanh nghiệp là người bán hàng.", answer: "SAI", explain: "Hộ gia đình cũng là NGƯỜI BÁN trên thị trường yếu tố sản xuất (bán sức lao động, vốn, đất đai)." },
+            { chapter: "Chương 1: Mở đầu", text: "25. Kinh tế học chuẩn tắc mô tả thế giới hiện thế nào, KT thực chứng mô tả thế giới sẽ ra sao.", answer: "SAI", explain: "Bị ngược! Thực chứng = Hiện thế nào (sự thật). Chuẩn tắc = Nên như thế nào (khuyến nghị)." },
+            { chapter: "Chương 1: Mở đầu", text: "26. Kinh tế học là môn học nghiên cứu cách thức phân bổ các nguồn lực khan hiếm cho các mục tiêu mang tính cạnh tranh.", answer: "ĐÚNG", explain: "Đây là định nghĩa tổng quát và chính xác nhất về Kinh tế học." },
+            { chapter: "Chương 1: Mở đầu", text: "27. PPF có độ dốc tăng dần khi tăng sản xuất hàng hóa ở trục hoành do quy luật chi phí cơ hội giảm dần.", answer: "SAI", explain: "Độ dốc PPF tăng dần do quy luật chi phí cơ hội TĂNG DẦN, không phải giảm dần." },
+            { chapter: "Chương 1: Mở đầu", text: "28. Đường giới hạn khả năng sản xuất đưa ra các giải pháp lựa chọn cho câu hỏi sản xuất cho ai.", answer: "SAI", explain: "PPF chỉ trả lời được câu hỏi 'Sản xuất cái gì?' và 'Như thế nào?'. Nó KHÔNG trả lời được phân phối cho ai." },
+            { chapter: "Chương 1: Mở đầu", text: "29. Nếu đường PPF của một nước đang mở rộng thì nước đó không có mối lo từ việc dân số tăng.", answer: "SAI", explain: "Nếu dân số tăng nhanh hơn tốc độ mở rộng của PPF, thu nhập bình quân đầu người vẫn sẽ giảm đi." },
+            { chapter: "Chương 1: Mở đầu", text: "30. Nếu một nền kinh tế không sử dụng tài nguyên của mình theo cách năng suất nhất thì đó là không hiệu quả.", answer: "ĐÚNG", explain: "Lúc này nền kinh tế đang nằm tại 1 điểm BÊN TRONG đường PPF (phi hiệu quả)." },
+            // --- CHƯƠNG 3: HỆ SỐ CO GIÃN ---
+            { chapter: "Chương: Hệ số co giãn", text: "61. Nếu cung hoàn toàn không co giãn, giá sẽ tăng khi chính phủ đánh thuế lên người sản xuất.", answer: "SAI", explain: "Cung hoàn toàn không co giãn (đường cung thẳng đứng), NSX sẽ chịu 100% gánh nặng thuế. Giá thị trường không thay đổi." },
+            { chapter: "Chương: Hệ số co giãn", text: "62. Dịch cúm gà làm đường cầu về thịt bò (D1) dịch sang phải thành (D2). D2 có hệ số co giãn giảm so với D1 tại mọi mức sản lượng.", answer: "SAI", explain: "Đường cầu dịch song song sang phải. Tại một mức sản lượng cố định, giá P sẽ cao hơn, dẫn đến độ co giãn (|Ed|) TĂNG lên chứ không phải giảm." },
+            { chapter: "Chương: Hệ số co giãn", text: "63. Cung trong dài hạn sẽ co giãn hơn cung trong ngắn hạn vì NSX có thể tìm được nguồn đầu vào thay thế.", answer: "ĐÚNG", explain: "Trong dài hạn, NSX có thời gian mở rộng nhà máy, tìm công nghệ và nguồn lực mới." },
+            { chapter: "Chương: Hệ số co giãn", text: "64. Những hàng hóa định nghĩa rộng (như chất tạo ngọt) sẽ có độ co giãn lớn hơn những hàng hóa định nghĩa hẹp (như đường Biên Hoà).", answer: "SAI", explain: "Hàng hóa định nghĩa hẹp dễ bị thay thế hơn (nếu đường Biên Hòa đắt, người ta mua đường hãng khác). Nên định nghĩa hẹp có co giãn LỚN HƠN." },
+            { chapter: "Chương: Hệ số co giãn", text: "65. Hai đường cầu cùng đi qua một điểm A, đường cầu nào dốc hơn thì cầu về hàng hóa đó ít co giãn theo giá hơn.", answer: "ĐÚNG", explain: "Tại cùng 1 điểm (cùng P, cùng Q), đường cầu dốc hơn (slope lớn) thì độ co giãn sẽ nhỏ hơn." },
+            { chapter: "Chương: Hệ số co giãn", text: "66. Nếu hệ số co giãn chéo của hàng hóa X theo giá hàng hóa Y âm, X và Y là hai hàng hóa thông thường.", answer: "SAI", explain: "Co giãn chéo ÂM chỉ kết luận được X và Y là hai hàng hóa BỔ SUNG cho nhau." },
+            { chapter: "Chương: Hệ số co giãn", text: "67. Gánh nặng thuế có xu hướng nghiêng về phía ít co giãn hơn của thị trường.", answer: "ĐÚNG", explain: "Bên nào kém linh hoạt, khó từ bỏ thị trường hơn (ít co giãn hơn) thì phải gánh nhiều thuế hơn." },
+            { chapter: "Chương: Hệ số co giãn", text: "68. Doanh thu đạt tối đa nếu cầu co giãn hoàn toàn theo giá.", answer: "SAI", explain: "Doanh thu (TR) đạt tối đa khi cầu co giãn ĐƠN VỊ (|Ed| = 1)." },
+            { chapter: "Chương: Hệ số co giãn", text: "69. Muốn tăng tổng doanh thu cho hàng hóa có nhiều khả năng thay thế cần tăng giá của hàng hóa đó.", answer: "SAI", explain: "Có nhiều thay thế nghĩa là cầu co giãn nhiều (|Ed| > 1). Muốn tăng doanh thu thì phải GIẢM GIÁ." },
+            { chapter: "Chương: Hệ số co giãn", text: "70. Với cầu tương đối co giãn, khi xảy ra dư thừa, người bán phải giảm giá tương đối NHIỀU để về cân bằng.", answer: "SAI", explain: "Cầu co giãn thì chỉ cần giảm giá MỘT CHÚT ÍT, lượng cầu sẽ tăng vọt và thị trường tự cân bằng nhanh chóng." },
+            { chapter: "Chương: Hệ số co giãn", text: "71. Nếu giá tăng 5% làm tổng doanh thu cũng tăng, thì cầu về hàng hoá là tương đối co giãn theo giá.", answer: "SAI", explain: "Giá và doanh thu tăng CÙNG CHIỀU chứng tỏ cầu KÉM co giãn (|Ed| < 1)." },
+            { chapter: "Chương: Hệ số co giãn", text: "72. Hệ số co giãn của cầu theo giá luôn thay đổi với bất kỳ dạng đường cầu nào.", answer: "SAI", explain: "Đường cầu có dạng P = a/Q (hyperbol) thì hệ số co giãn luôn bằng -1 tại mọi điểm." },
+            { chapter: "Chương: Hệ số co giãn", text: "73. Hệ số co giãn của cung theo giá bằng 2 nghĩa là giá tăng 0,5% làm lượng cung tăng 1%.", answer: "ĐÚNG", explain: "Es = %dQ / %dP = 1% / 0,5% = 2." },
+            { chapter: "Chương: Hệ số co giãn", text: "74. Nếu co giãn của cầu theo thu nhập là số dương, có thể kết luận đó là hàng hóa xa xỉ.", answer: "SAI", explain: "Số dương chỉ kết luận được là hàng hóa THÔNG THƯỜNG. Phải LỚN HƠN 1 mới là hàng xa xỉ." },
+            { chapter: "Chương: Hệ số co giãn", text: "75. Cầu xe ô tô sẽ nhạy cảm với sự thay đổi của giá trong 1 tháng hơn là trong 5 năm.", answer: "SAI", explain: "Trong dài hạn (5 năm), người tiêu dùng có nhiều lựa chọn và thay đổi thói quen hơn nên cầu DÀI HẠN co giãn hơn." },
+            { chapter: "Chương: Hệ số co giãn", text: "76. Thị trường cân bằng khi cung cầu co giãn như nhau theo giá.", answer: "SAI", explain: "Thị trường cân bằng khi Lượng Cung bằng Lượng Cầu (Qd = Qs), không liên quan đến độ co giãn." },
+            { chapter: "Chương: Hệ số co giãn", text: "77. Nếu cung hoàn toàn không co giãn theo giá, đường cung là đường nằm ngang.", answer: "SAI", explain: "Hoàn toàn không co giãn là đường THẲNG ĐỨNG. Hoàn toàn co giãn mới là đường nằm ngang." },
+            { chapter: "Chương: Hệ số co giãn", text: "78. Hàng hóa thiết yếu thường có cầu ít co giãn theo giá trong khi hàng xa xỉ có cầu co giãn tương đối.", answer: "ĐÚNG", explain: "Vì hàng thiết yếu bắt buộc phải dùng dù giá cao, còn hàng xa xỉ có thể cắt giảm dễ dàng." },
+            { chapter: "Chương: Hệ số co giãn", text: "79. Giá hàng A tăng làm dịch cầu hàng B sang phải nếu co giãn chéo giữa A và B là âm.", answer: "SAI", explain: "Co giãn chéo âm = Bổ sung. Giá A tăng -> Mua A ít đi -> Mua B cũng ít đi (Đường cầu B dịch sang TRÁI)." },
+            { chapter: "Chương: Hệ số co giãn", text: "80. Mọi đường cung tuyến tính đi qua gốc tọa độ có hệ số co giãn của cung theo giá là một hằng số.", answer: "ĐÚNG", explain: "Hệ số co giãn Es luôn bằng 1 tại mọi điểm." },
+            { chapter: "Chương: Hệ số co giãn", text: "81. Tiến bộ về công nghệ làm cung tăng giúp cho doanh thu của hãng tăng.", answer: "SAI", explain: "Nếu cung tăng nhưng cầu hàng hóa KÉM CO GIÃN (VD: lúa gạo), giá sẽ rớt thảm hại làm doanh thu giảm." },
+            { chapter: "Chương: Hệ số co giãn", text: "82. Nếu A và B là hai hàng hóa thay thế thì hệ số co giãn chéo của cầu A theo giá B luôn dương.", answer: "ĐÚNG", explain: "Giá B tăng -> Người ta bỏ B chạy sang mua A -> Cầu A tăng (Cùng chiều -> số dương)." },
+            { chapter: "Chương: Hệ số co giãn", text: "83. Nếu cung là co giãn đơn vị thì tổng doanh thu là không đổi khi giá thay đổi.", answer: "SAI", explain: "Đó là đặc điểm của CẦU co giãn đơn vị, không phải cung." },
+            { chapter: "Chương: Hệ số co giãn", text: "84. Nếu việc tăng giá không làm ảnh hưởng đến doanh thu thì cầu hàng hoá hoàn toàn không co giãn.", answer: "SAI", explain: "Doanh thu không đổi khi giá đổi -> Cầu co giãn ĐƠN VỊ (|Ed| = 1)." },
+            { chapter: "Chương: Hệ số co giãn", text: "85. Nếu chi tiêu cho một hàng hoá chiếm 20% thu nhập thì co giãn thu nhập của nó là 0,2.", answer: "SAI", explain: "Tỷ trọng chi tiêu không phải là độ co giãn của thu nhập. Hai khái niệm hoàn toàn khác nhau." },
+            { chapter: "Chương: Hệ số co giãn", text: "86. Hệ số co giãn của cung theo giá nhỏ hơn 1 khi cung ít co giãn theo giá.", answer: "ĐÚNG", explain: "Đây là định nghĩa chuẩn của cung ít (kém) co giãn." },
+            { chapter: "Chương: Hệ số co giãn", text: "87. Giá thị trường sẽ tăng đúng bằng mức thuế khi cầu hoàn toàn co giãn.", answer: "SAI", explain: "Cầu hoàn toàn co giãn (nằm ngang), nếu đánh thuế thì giá thị trường (giá người mua trả) KHÔNG ĐỔI, NSX chịu toàn bộ thuế." },
+            { chapter: "Chương: Hệ số co giãn", text: "88. Co giãn chéo là đại lượng đo sự thay đổi của lượng cầu một hàng hóa khi giá CHÍNH NÓ thay đổi.", answer: "SAI", explain: "Co giãn chéo (Cross-elasticity) đo phản ứng của cầu hàng hóa A khi giá HÀNG HÓA B thay đổi." },
+            { chapter: "Chương: Hệ số co giãn", text: "89. Người tiêu dùng chịu phần lớn thuế khi cầu co giãn HƠN cung.", answer: "SAI", explain: "Nguyên lý: Ai co giãn HƠN (dễ chạy hơn) thì chịu ÍT thuế hơn. Cầu co giãn hơn cung -> NSX chịu phần lớn thuế." },
+            { chapter: "Chương: Hệ số co giãn", text: "90. Hệ số co giãn của cầu theo thu nhập bằng -2 nghĩa là người tiêu dùng đang mua một hàng hóa thứ cấp.", answer: "ĐÚNG", explain: "Co giãn thu nhập ÂM luôn là hàng thứ cấp (thu nhập tăng thì mua ít đi)." },
+            // --- BỘ ĐỀ THI VI MÔ: CHƯƠNG 2 - CUNG VÀ CẦU ---
+            { chapter: "Chương 2: Cung - Cầu", text: "31. Giảm giá hàng hóa và tăng số lượng người mua hàng hóa đều gây nên một sự ảnh hưởng giống nhau đến đường cầu về hàng hóa này.", answer: "SAI", explain: "Giảm giá gây ra sự TRƯỢT DỌC (thay đổi lượng cầu). Tăng số lượng người mua làm DỊCH CHUYỂN đường cầu (thay đổi cầu)." },
+            { chapter: "Chương 2: Cung - Cầu", text: "32. X và Y là hai hàng hóa bổ sung. Giá X giảm dẫn đến giá Y giảm.", answer: "SAI", explain: "Giá X giảm -> Người ta mua X nhiều hơn -> Mua Y nhiều hơn (cầu Y tăng) -> Giá Y sẽ TĂNG lên." },
+            { chapter: "Chương 2: Cung - Cầu", text: "33. Đường cầu một hàng hóa dịch chuyển do sự thay đổi của bất kỳ nhân tố nào tác động đến cầu ngoại trừ giá của hàng hóa đó.", answer: "ĐÚNG", explain: "Giá của chính hàng hóa đó chỉ gây ra sự trượt dọc dọc theo đường cầu. Các yếu tố khác (thu nhập, thị hiếu...) làm dịch chuyển đường cầu." },
+            { chapter: "Chương 2: Cung - Cầu", text: "34. Khi giá một hàng hóa giảm làm giá một hàng hóa liên quan giảm theo thì hai hàng hóa này là hai hàng hóa thông thường.", answer: "SAI", explain: "Giá X giảm (Cầu X tăng), giá Y giảm (Cầu Y giảm) -> X và Y là hai hàng hóa THAY THẾ, không liên quan đến khái niệm 'thông thường'." },
+            { chapter: "Chương 2: Cung - Cầu", text: "35. Với giả định các yếu tố khác không thay đổi, giá táo Mỹ tăng làm thay đổi cầu về lê Hàn Quốc.", answer: "ĐÚNG", explain: "Táo và Lê là hàng hóa thay thế. Giá táo tăng sẽ làm cầu về lê dịch chuyển sang phải." },
+            { chapter: "Chương 2: Cung - Cầu", text: "36. Giả sử có nhiều hãng mới tham gia vào thị trường trà sữa. Giá trà sữa sẽ giảm xuống và lượng trà sữa sẽ tăng lên.", answer: "ĐÚNG", explain: "Nhiều hãng gia nhập làm đường cung dịch chuyển sang phải (tăng cung), dẫn đến giá cân bằng giảm và lượng cân bằng tăng." },
+            { chapter: "Chương 2: Cung - Cầu", text: "37. Nếu cửa hàng điện máy kỳ vọng giá điều hòa tăng vào tháng sau, họ sẽ cung cấp nhiều điều hòa hơn vào tháng này.", answer: "SAI", explain: "Kỳ vọng giá tăng sẽ khiến người bán 'găm hàng' lại chờ tháng sau bán giá cao hơn. Do đó, cung tháng này sẽ GIẢM." },
+            { chapter: "Chương 2: Cung - Cầu", text: "38. Đường cầu luôn có dạng dốc xuống từ trái qua phải.", answer: "SAI", explain: "Không phải 'luôn luôn'. Hàng hóa Giffen có đường cầu dốc lên, hoặc cầu hoàn toàn co giãn/không co giãn có dạng nằm ngang/thẳng đứng." },
+            { chapter: "Chương 2: Cung - Cầu", text: "39. Kỳ vọng giá cổ phiếu AAA tăng sẽ dẫn đến lượng cổ phiếu AAA trao đổi hiện tại chắc chắn tăng lên.", answer: "SAI", explain: "Kỳ vọng giá tăng -> Cầu tăng (người mua muốn mua ngay) & Cung giảm (người bán muốn giữ lại). Giá chắc chắn tăng nhưng LƯỢNG trao đổi có thể tăng, giảm hoặc không đổi." },
+            { chapter: "Chương 2: Cung - Cầu", text: "40. Cầu về hàng hóa dịch vụ là nhu cầu của người tiêu dùng được thỏa mãn trong giới hạn thu nhập của họ.", answer: "ĐÚNG", explain: "Cầu là nhu cầu có khả năng thanh toán (sẵn sàng mua và có đủ tiền mua)." },
+            { chapter: "Chương 2: Cung - Cầu", text: "41. Cầu thị trường là tổng lượng cầu của các cá nhân trên thị trường tại các mức giá tương ứng.", answer: "ĐÚNG", explain: "Đường cầu thị trường được xác định bằng cách cộng theo chiều ngang các đường cầu cá nhân." },
+            { chapter: "Chương 2: Cung - Cầu", text: "42. Giá A tăng làm giá B giảm thì A và B là hai hàng hóa thay thế cho nhau trong tiêu dùng.", answer: "SAI", explain: "Giá A tăng -> Cầu B giảm (Giá B giảm). Điều này chứng tỏ A và B là hai hàng hóa BỔ SUNG." },
+            { chapter: "Chương 2: Cung - Cầu", text: "43. Chính phủ đặt sàn giá nhằm mục đích bảo vệ người sản xuất trong nước.", answer: "ĐÚNG", explain: "Sàn giá (mức giá tối thiểu lớn hơn giá cân bằng) dùng để bảo vệ lợi ích của người cung cấp/sản xuất." },
+            { chapter: "Chương 2: Cung - Cầu", text: "44. Đường Engel mô tả mối quan hệ giữa giá và lượng cầu.", answer: "SAI", explain: "Đường Engel mô tả mối quan hệ giữa THU NHẬP và Lượng cầu. (Đường Cầu mới mô tả giá và lượng cầu)." },
+            { chapter: "Chương 2: Cung - Cầu", text: "45. Thuế và trợ cấp đều gây ra ảnh hưởng như nhau tới giá và lượng cân bằng khi tác động vào người sản xuất.", answer: "SAI", explain: "Thuế làm đường cung dịch trái (Giá tăng, Lượng giảm). Trợ cấp làm đường cung dịch phải (Giá giảm, Lượng tăng). Tác động hoàn toàn ngược nhau." },
+            { chapter: "Chương 2: Cung - Cầu", text: "46. Nếu cả cung và cầu đều dịch chuyển sang phải thì giá và lượng cân bằng mới chắc chắn tăng.", answer: "SAI", explain: "Khi Cung tăng & Cầu tăng: Lượng chắc chắn tăng, nhưng GIÁ cân bằng có thể tăng, giảm hoặc không đổi tùy vào mức độ dịch chuyển của 2 đường." },
+            { chapter: "Chương 2: Cung - Cầu", text: "47. Thu nhập của người tiêu dùng sẽ quyết định việc anh ta quan niệm một hàng hóa là thông thường hay thứ cấp.", answer: "ĐÚNG", explain: "Tính chất thông thường hay thứ cấp phụ thuộc vào mức thu nhập tương đối. Cùng một chiếc xe máy, với sinh viên nghèo là hàng thông thường, với tỷ phú là hàng thứ cấp." },
+            { chapter: "Chương 2: Cung - Cầu", text: "48. Giảm giá hàng hóa bổ sung của hàng hóa A sẽ làm đường cầu của hàng hóa A dịch chuyển sang phải.", answer: "ĐÚNG", explain: "Ví dụ: Giá xăng (bổ sung) giảm -> Mọi người đi xe máy (A) nhiều hơn -> Cầu xe máy tăng (dịch phải)." },
+            { chapter: "Chương 2: Cung - Cầu", text: "49. Giá cả do người mua và người bán tác động qua lại quyết định, sẽ phân bổ các nguồn lực khan hiếm của nền kinh tế.", answer: "ĐÚNG", explain: "Đây là nguyên lý Bàn tay vô hình của cơ chế thị trường." },
+            { chapter: "Chương 2: Cung - Cầu", text: "50. Quan ngại về thực phẩm không rõ nguồn gốc làm giá thực phẩm sạch, có nguồn gốc tăng lên.", answer: "ĐÚNG", explain: "Thị hiếu thay đổi -> Cầu thực phẩm sạch tăng (dịch phải) -> Giá và Lượng cân bằng đều tăng." },
+            { chapter: "Chương 2: Cung - Cầu", text: "51. Luật cung cho biết khi giá hàng hóa giảm xuống thì lượng cung đối với hàng hóa tăng lên.", answer: "SAI", explain: "Luật cung: Giá và lượng cung tỷ lệ THUẬN. Giá giảm -> Lượng cung GIẢM." },
+            { chapter: "Chương 2: Cung - Cầu", text: "52. Khi số lượng người tiêu dùng tăng lên, đường cung về hàng hóa dịch vụ dịch chuyển sang phải.", answer: "SAI", explain: "Số lượng người tiêu dùng tăng sẽ làm đường CẦU dịch chuyển sang phải, không phải đường cung." },
+            { chapter: "Chương 2: Cung - Cầu", text: "53. Giá cân bằng sẽ thay đổi khi cả cung và cầu đều dịch chuyển.", answer: "SAI", explain: "Nếu cung và cầu dịch chuyển ngược chiều nhau với khoảng cách vừa khít (VD: Cung tăng đúng bằng mức Cầu tăng), giá cân bằng có thể KHÔNG ĐỔI." },
+            { chapter: "Chương 2: Cung - Cầu", text: "54. Một sự giảm giá của các đầu vào sản xuất sẽ làm thay đổi lượng cung nhưng không làm cung thay đổi.", answer: "SAI", explain: "Giá yếu tố đầu vào thay đổi sẽ làm ĐƯỜNG CUNG dịch chuyển (thay đổi CUNG), qua đó dẫn đến thay đổi lượng cung cân bằng." },
+            { chapter: "Chương 2: Cung - Cầu", text: "55. Khi thu nhập tăng, người tiêu dùng luôn mua nhiều hàng hóa và dịch vụ hơn.", answer: "SAI", explain: "Chỉ đúng với hàng hóa thông thường. Đối với hàng hóa thứ cấp, thu nhập tăng người tiêu dùng sẽ mua ÍT ĐI." },
+            { chapter: "Chương 2: Cung - Cầu", text: "56. Tiêu dùng hàng đắt tiền là hàng xa xỉ. Tiêu dùng hàng rẻ tiền là hàng thứ cấp.", answer: "SAI", explain: "Hàng thứ cấp hay xa xỉ không được định nghĩa bằng giá đắt/rẻ, mà định nghĩa bằng PHẢN ỨNG CỦA CẦU KHI THU NHẬP THAY ĐỔI." },
+            { chapter: "Chương 2: Cung - Cầu", text: "57. Dư thừa hàng hóa sẽ đẩy giá tăng lên trong khi thiếu hụt sẽ làm giảm giá.", answer: "SAI", explain: "Bị ngược! Dư thừa sẽ làm người bán ép giá nhau -> Giá GIẢM. Thiếu hụt làm người mua tranh giành -> Giá TĂNG." },
+            { chapter: "Chương 2: Cung - Cầu", text: "58. Giá trao đổi trên thị trường do tương tác quan hệ cung cầu quyết định.", answer: "ĐÚNG", explain: "Trong kinh tế thị trường cạnh tranh, cung và cầu xác định giá và sản lượng cân bằng." },
+            { chapter: "Chương 2: Cung - Cầu", text: "59. Sử dụng công nghệ cao trong sản xuất máy tính HP sẽ làm giá máy tính HP trên thị trường giảm.", answer: "ĐÚNG", explain: "Công nghệ tốt -> Chi phí rẻ -> Cung tăng (dịch phải) -> Giá cân bằng giảm." },
+            { chapter: "Chương 2: Cung - Cầu", text: "60. Đường cung thị trường thoải hơn các đường cung cá nhân.", answer: "ĐÚNG", explain: "Đường cung thị trường là tổng theo chiều ngang, dẫn đến hệ số góc của phương trình nhỏ hơn, làm đồ thị thoải hơn." },
+            // --- CHƯƠNG 5: HÀNH VI NHÀ SẢN XUẤT ---
             { chapter: "Chương: Hành vi NSX", text: "121. Chi phí chìm chính là một loại chi phí ẩn.", answer: "SAI", explain: "Chi phí chìm là chi phí đã xảy ra và không thể thu hồi, khác hoàn toàn với chi phí ẩn (chi phí cơ hội)." },
             { chapter: "Chương: Hành vi NSX", text: "122. Kế toán viên ghi chép các luồng tiền ra vào, do đó không quan tâm đến chi phí hiện.", answer: "SAI", explain: "Kế toán viên RẤT quan tâm đến chi phí hiện (chi phí kế toán). Họ chỉ bỏ qua chi phí ẩn." },
             { chapter: "Chương: Hành vi NSX", text: "123. Khoảng cách theo chiều dọc giữa ATC và AVC luôn không đổi ở mọi mức sản lượng.", answer: "SAI", explain: "Khoảng cách đó chính là AFC. Khi sản lượng tăng, AFC sẽ giảm dần về 0 nên khoảng cách hẹp dần." },
@@ -139,8 +254,12 @@
             dy: 0, jumpPower: 5.5, gravity: 0.25,  
             
             draw: function() {
-                if (playerImg.complete) ctx.drawImage(playerImg, this.x, this.y, this.width, this.height);
-                else { ctx.fillStyle = "pink"; ctx.fillRect(this.x, this.y, this.width, this.height); }
+                // Cập nhật vị trí thẻ ảnh đè lên trên nền xanh nhưng nằm DƯỚI bức tường
+                mikuGif.style.display = 'block';
+                mikuGif.style.left = this.x + 'px';
+                mikuGif.style.top = this.y + 'px';
+                mikuGif.style.width = this.width + 'px';
+                mikuGif.style.height = this.height + 'px';
             },
             update: function() {
                 this.dy += this.gravity; this.y += this.dy;
@@ -206,8 +325,9 @@
                 let playerCenterY = p.y + p.height / 2;
                 
                 if (playerCenterY < safeTop || playerCenterY > safeBottom) {
-                    let extraExplain = wall.qData.explain ? `\nGiải thích: ${wall.qData.explain}` : "";
-                    infoEl.innerText = `Đáp án đúng là: ${wall.qData.answer} ${extraExplain}`;
+                    // Dùng mã HTML (<br> và <b>) để hiển thị giải thích đẹp mắt và xuống dòng được
+                    let extraExplain = wall.qData.explain ? `<br><br><b>Giải thích:</b> ${wall.qData.explain}` : "";
+                    infoEl.innerHTML = `Đáp án là: <span style="color:#f1c40f">${wall.qData.answer}</span> ${extraExplain}`;
                     return true; 
                 }
             }
@@ -234,8 +354,10 @@
 
         function animate() {
             if (!gameRunning) return;
+            // Quan trọng: Chỉ xóa canvas thành trong suốt để thấy được hình GIF ở dưới
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
+            // Vẽ đất
             ctx.fillStyle = "#34495e"; ctx.fillRect(0, PLAY_AREA, canvas.width, GROUND_HEIGHT);
             ctx.fillStyle = "#2c3e50"; ctx.fillRect(0, PLAY_AREA + 5, canvas.width, 15);
 
@@ -246,13 +368,14 @@
         function gameOver() {
             gameRunning = false;
             goScreen.style.display = 'flex';
+            mikuGif.style.display = 'none'; // Giấu Miku đi khi màn hình báo lỗi hiện lên
         }
 
         function doAction(e) {
             if(e.cancelable) e.preventDefault(); 
             
             if (!gameRunning) {
-                walls = []; score = 0; gameSpeed = 1.8; frame = 0;
+                walls = []; score = 0; gameSpeed = 1.0; frame = 0;
                 scoreEl.innerText = "Điểm: 0";
                 goScreen.style.display = 'none';
                 player.y = 150; player.dy = 0;
